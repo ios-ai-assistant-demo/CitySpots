@@ -4,6 +4,7 @@ import Combine
 enum DetailSource: String {
     case home
     case explore
+    case weekendEdit = "weekend edit"
 }
 
 final class SpotDetailViewModel: ObservableObject {

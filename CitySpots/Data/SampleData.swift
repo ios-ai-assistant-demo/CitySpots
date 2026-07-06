@@ -1,6 +1,18 @@
 import Foundation
 
 enum SampleData {
+    static let weekendEdit = EditorialCollection(
+        id: "weekend-edit",
+        title: "Weekend Edit",
+        subtitle: "Three easy stops for a slower city weekend.",
+        summary: "Start with coffee, browse the market and finish with a sunset walk by the river.",
+        spotIDs: [
+            "riverside-brew",
+            "lantern-market",
+            "embankment-loop"
+        ]
+    )
+
     static let spots: [Spot] = [
         Spot(
             id: "riverside-brew",
