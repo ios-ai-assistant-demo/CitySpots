@@ -8,25 +8,36 @@ final class CitySpotsStore: ObservableObject {
     @Published private(set) var selectedCategories: Set<SpotCategory>
     @Published private(set) var isFavoritesOnly: Bool
     @Published private(set) var exploreSort: ExploreSortOption
+    @Published private(set) var isWeekendEditCardVisible: Bool
 
+    let weekendEdit: EditorialCollection
+
+    private let analyticsTracker: any CitySpotsAnalyticsTracking
     private let defaults: UserDefaults
+    private var didTrackWeekendEditCardShow = false
 
     private enum DefaultsKey {
         static let selectedCategories = "explore.selectedCategories"
         static let isFavoritesOnly = "explore.isFavoritesOnly"
         static let sort = "explore.sort"
+        static let weekendEditCardDismissed = "home.weekendEditCardDismissed"
     }
 
     private static let defaultCategories = Set(SpotCategory.allCases)
 
     init(
         spots: [Spot] = SampleData.spots,
+        weekendEdit: EditorialCollection = SampleData.weekendEdit,
         favoriteIDs: Set<SpotID> = ["riverside-brew"],
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        analyticsTracker: any CitySpotsAnalyticsTracking = ConsoleCitySpotsAnalyticsTracker()
     ) {
         self.defaults = defaults
+        self.analyticsTracker = analyticsTracker
         self.spots = spots
+        self.weekendEdit = weekendEdit
         self.favoriteIDs = favoriteIDs
+        self.isWeekendEditCardVisible = !defaults.bool(forKey: DefaultsKey.weekendEditCardDismissed)
 
         let persistedCategories = defaults.array(forKey: DefaultsKey.selectedCategories) as? [String]
         if let persistedCategories {
@@ -47,6 +58,10 @@ final class CitySpotsStore: ObservableObject {
 
     var featuredSpots: [Spot] {
         Array(spots.prefix(3))
+    }
+
+    var weekendEditSpots: [Spot] {
+        spots(for: weekendEdit)
     }
 
     var exploreSpots: [Spot] {
@@ -116,6 +131,10 @@ final class CitySpotsStore: ObservableObject {
         spots.first { $0.id == id }
     }
 
+    func spots(for collection: EditorialCollection) -> [Spot] {
+        collection.spotIDs.compactMap(spot(id:))
+    }
+
     func isCategorySelected(_ category: SpotCategory) -> Bool {
         selectedCategories.contains(category)
     }
@@ -144,6 +163,25 @@ final class CitySpotsStore: ObservableObject {
         selectedCategories = Self.defaultCategories
         isFavoritesOnly = false
         persistExplorePreferences()
+    }
+
+    func trackWeekendEditCardShown() {
+        guard isWeekendEditCardVisible, !didTrackWeekendEditCardShow else { return }
+
+        didTrackWeekendEditCardShow = true
+        analyticsTracker.track(.weekendEditCard(.show, collectionID: weekendEdit.id))
+    }
+
+    func trackWeekendEditCardTap() {
+        analyticsTracker.track(.weekendEditCard(.tap, collectionID: weekendEdit.id))
+    }
+
+    func dismissWeekendEditCard() {
+        guard isWeekendEditCardVisible else { return }
+
+        isWeekendEditCardVisible = false
+        defaults.set(true, forKey: DefaultsKey.weekendEditCardDismissed)
+        analyticsTracker.track(.weekendEditCard(.dismiss, collectionID: weekendEdit.id))
     }
 
     private func persistExplorePreferences() {
